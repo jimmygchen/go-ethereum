@@ -30,6 +30,7 @@ import (
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/consensus/misc"
+	"github.com/ethereum/go-ethereum/consensus/misc/eip4844"
 	"github.com/ethereum/go-ethereum/core"
 	"github.com/ethereum/go-ethereum/core/state"
 	"github.com/ethereum/go-ethereum/core/txpool"
@@ -386,7 +387,7 @@ func (p *BlobPool) Init(gasTip *big.Int, head *types.Header, reserve txpool.Addr
 		blobfee = uint256.MustFromBig(big.NewInt(params.BlobTxMinDataGasprice))
 	)
 	if p.head.ExcessDataGas != nil {
-		blobfee = uint256.MustFromBig(misc.CalcBlobFee(*p.head.ExcessDataGas))
+		blobfee = uint256.MustFromBig(eip4844.CalcBlobFee(*p.head.ExcessDataGas))
 	}
 	p.evict = newPriceHeap(basefee, blobfee, &p.index)
 
@@ -723,7 +724,7 @@ func (p *BlobPool) Reset(oldHead, newHead *types.Header) {
 		blobfee = uint256.MustFromBig(big.NewInt(params.BlobTxMinDataGasprice))
 	)
 	if newHead.ExcessDataGas != nil {
-		blobfee = uint256.MustFromBig(misc.CalcBlobFee(*newHead.ExcessDataGas))
+		blobfee = uint256.MustFromBig(eip4844.CalcBlobFee(*newHead.ExcessDataGas))
 	}
 	p.evict.reinit(basefee, blobfee, false)
 
@@ -890,6 +891,8 @@ func (p *BlobPool) reinject(addr common.Address, tx *types.Transaction) {
 	}
 	p.lookup[meta.hash] = meta.id
 	p.stored += uint64(meta.size)
+
+	p.eventFeed.Send(core.NewTxsEvent{Txs: types.Transactions{tx}})
 }
 
 // SetGasTip implements txpool.SubPool, allowing the blob pool's gas requirements
@@ -968,14 +971,15 @@ func (p *BlobPool) validateTx(tx *types.Transaction, blobs []kzg4844.Blob, commi
 	}
 	// Ensure the transaction adheres to the stateful pool filters (nonce, balance)
 	stateOpts := &txpool.ValidationOptionsWithState{
-		State: p.state,
-
-		FirstNonceGap: func(addr common.Address) uint64 {
-			// Nonce gaps are not permitted in the blob pool, the first gap will
-			// be the next nonce shifted by however many transactions we already
-			// have pooled.
-			return p.state.GetNonce(addr) + uint64(len(p.index[addr]))
-		},
+		State:         p.state,
+		FirstNonceGap: nil, // TODO (MariusVanDerWijden) reenable once txs are strictly sent by nonce
+		/*
+			FirstNonceGap: func(addr common.Address) uint64 {
+				// Nonce gaps are not permitted in the blob pool, the first gap will
+				// be the next nonce shifted by however many transactions we already
+				// have pooled.
+				return p.state.GetNonce(addr) + uint64(len(p.index[addr]))
+			},*/
 		ExistingExpenditure: func(addr common.Address) *big.Int {
 			if spent := p.spent[addr]; spent != nil {
 				return spent.ToBig()
@@ -1227,6 +1231,7 @@ func (p *BlobPool) add(tx *types.Transaction, blobs []kzg4844.Blob, commits []kz
 	}
 	p.updateStorageMetrics()
 
+	p.eventFeed.Send(core.NewTxsEvent{Txs: types.Transactions{tx}})
 	return nil
 }
 
