@@ -1877,7 +1877,7 @@ func (s *TransactionAPI) SendRawTransaction(ctx context.Context, input hexutil.B
 	}
 	if input[0] == types.BlobTxType {
 		var outer types.BlobTxWithBlobs
-		if err := rlp.DecodeBytes(input, &outer); err != nil {
+		if err := outer.UnmarshalBinary(input); err != nil {
 			return common.Hash{}, err
 		}
 		return SubmitTransaction(ctx, s.b, outer.Transaction, outer.Blobs, outer.Commitments, outer.Proofs)

@@ -39,21 +39,7 @@ func (tx *BlobTxWithBlobs) DecodeRLP(s *rlp.Stream) error {
 	if err != nil {
 		return err
 	}
-	if len(b) < 1 {
-		return errShortTypedTx
-	}
-	if b[0] == BlobTxType {
-		var blobTypedTx innerType
-		if err := rlp.DecodeBytes(b[1:], &blobTypedTx); err != nil {
-			return err
-		}
-		tx.Transaction = NewTx(blobTypedTx.BlobTx)
-		tx.Blobs = blobTypedTx.Blobs
-		tx.Commitments = blobTypedTx.Commitments
-		tx.Proofs = blobTypedTx.Proofs
-		return nil
-	}
-	return tx.Transaction.UnmarshalBinary(b)
+	return tx.UnmarshalBinary(b)
 }
 
 func (tx *BlobTxWithBlobs) EncodeRLP(w io.Writer) error {
@@ -81,4 +67,40 @@ func (tx *BlobTxWithBlobs) EncodeRLP(w io.Writer) error {
 		return err
 	}
 	return rlp.Encode(w, buf.Bytes())
+}
+
+func (tx *BlobTxWithBlobs) UnmarshalBinary(b []byte) error {
+	if len(b) < 1 {
+		return errShortTypedTx
+	}
+	if b[0] == BlobTxType {
+		var blobTypedTx innerType
+		if err := rlp.DecodeBytes(b[1:], &blobTypedTx); err != nil {
+			return err
+		}
+		tx.Transaction = NewTx(blobTypedTx.BlobTx)
+		tx.Blobs = blobTypedTx.Blobs
+		tx.Commitments = blobTypedTx.Commitments
+		tx.Proofs = blobTypedTx.Proofs
+		return nil
+	}
+	return tx.Transaction.UnmarshalBinary(b)
+}
+
+func (tx *BlobTxWithBlobs) MarshalBinary() ([]byte, error) {
+	blobTx, ok := tx.Transaction.inner.(*BlobTx)
+	if !ok {
+		// For non-blob transactions, the encoding is just the transaction.
+		return tx.Transaction.MarshalBinary()
+	}
+	var buf bytes.Buffer
+	buf.WriteByte(BlobTxType)
+	innerValue := &innerType{
+		BlobTx:      blobTx,
+		Blobs:       tx.Blobs,
+		Commitments: tx.Commitments,
+		Proofs:      tx.Proofs,
+	}
+	err := rlp.Encode(&buf, innerValue)
+	return buf.Bytes(), err
 }
