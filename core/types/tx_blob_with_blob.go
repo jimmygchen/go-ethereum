@@ -94,7 +94,7 @@ func (tx *BlobTxWithBlobs) DecodeRLP(s *rlp.Stream) error {
 }
 
 type innerType2 struct {
-	BlobTx      *BlobTx
+	BlobTx      rlp.RawValue
 	Blobs       []kzg4844.Blob
 	Commitments []kzg4844.Commitment
 	Proofs      []kzg4844.Proof
@@ -114,10 +114,11 @@ func (tx *BlobTxWithBlobs) EncodeRLP(w io.Writer) error {
 		_, err := w.Write(b.Bytes())
 		return err
 	}
+	byt, _ := rlp.EncodeToBytes(tx.Transaction.inner.(*BlobTx))
 	return rlp.Encode(w, &wrapper{
 		TxType: BlobTxType,
 		Inner: innerType2{
-			BlobTx:      tx.Transaction.inner.(*BlobTx),
+			BlobTx:      byt,
 			Blobs:       tx.Blobs,
 			Commitments: tx.Commitments,
 			Proofs:      tx.Proofs,
