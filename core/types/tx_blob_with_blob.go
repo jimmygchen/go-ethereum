@@ -9,7 +9,7 @@ import (
 )
 
 type BlobTxWithBlobs struct {
-	Transaction
+	*Transaction
 	Blobs       []kzg4844.Blob
 	Commitments []kzg4844.Commitment
 	Proofs      []kzg4844.Proof
@@ -20,7 +20,7 @@ func NewBlobTxWithBlobs(tx *Transaction, blobs []kzg4844.Blob, commitments []kzg
 		return nil
 	}
 	return &BlobTxWithBlobs{
-		Transaction: *tx,
+		Transaction: tx,
 		Blobs:       blobs,
 		Commitments: commitments,
 		Proofs:      proofs,
@@ -59,7 +59,7 @@ func (tx *BlobTxWithBlobs) DecodeRLP2(s *rlp.Stream) error {
 			//err := s.Decode(&blobTypedTx)
 			err := rlp.DecodeBytes(b[1:], &blobTypedTx)
 			if err == nil {
-				tx.Transaction = *NewTx(blobTypedTx.BlobTx)
+				tx.Transaction = NewTx(blobTypedTx.BlobTx)
 				tx.Blobs = blobTypedTx.Blobs
 				tx.Commitments = blobTypedTx.Commitments
 				tx.Proofs = blobTypedTx.Proofs
@@ -79,12 +79,12 @@ func (tx *BlobTxWithBlobs) DecodeRLP(s *rlp.Stream) error {
 	var typedTx Transaction
 	err := s.Decode(&typedTx)
 	if err == nil {
-		tx.Transaction = typedTx
+		tx.Transaction = &typedTx
 		return nil
 	}
 	var blobTypedTx innerType
 	if err := s.Decode(&blobTypedTx); err == nil {
-		tx.Transaction = *NewTx(blobTypedTx.BlobTx)
+		tx.Transaction = NewTx(blobTypedTx.BlobTx)
 		tx.Blobs = blobTypedTx.Blobs
 		tx.Commitments = blobTypedTx.Commitments
 		tx.Proofs = blobTypedTx.Proofs
@@ -93,36 +93,29 @@ func (tx *BlobTxWithBlobs) DecodeRLP(s *rlp.Stream) error {
 	return err
 }
 
-type innerType2 struct {
-	BlobTx      rlp.RawValue
-	Blobs       []kzg4844.Blob
-	Commitments []kzg4844.Commitment
-	Proofs      []kzg4844.Proof
-}
-
-type wrapper struct {
-	TxType byte
-	Inner  innerType2
-}
-
 func (tx *BlobTxWithBlobs) EncodeRLP(w io.Writer) error {
-	var b bytes.Buffer
-	if err := tx.Transaction.EncodeRLP(&b); err != nil {
+	blobTx, ok := tx.Transaction.inner.(*BlobTx)
+	if !ok {
+		// For non-blob transactions, the encoding is just the transaction.
+		return tx.Transaction.EncodeRLP(w)
+	}
+
+	// For blob transactions, the encoding is the transaction together with the blobs.
+	// Use temporary buffer from pool.
+	buf := encodeBufferPool.Get().(*bytes.Buffer)
+	defer encodeBufferPool.Put(buf)
+	buf.Reset()
+
+	buf.WriteByte(BlobTxType)
+	innerValue := &innerType{
+		BlobTx:      blobTx,
+		Blobs:       tx.Blobs,
+		Commitments: tx.Commitments,
+		Proofs:      tx.Proofs,
+	}
+	err := rlp.Encode(buf, innerValue)
+	if err != nil {
 		return err
 	}
-	if tx.Transaction.Type() != BlobTxType {
-		_, err := w.Write(b.Bytes())
-		return err
-	}
-	byt, _ := rlp.EncodeToBytes(tx.Transaction.inner.(*BlobTx))
-	return rlp.Encode(w, &wrapper{
-		TxType: BlobTxType,
-		Inner: innerType2{
-			BlobTx:      byt,
-			Blobs:       tx.Blobs,
-			Commitments: tx.Commitments,
-			Proofs:      tx.Proofs,
-		}})
-	//_, err := w.Write(b.Bytes())
-	//return err
+	return rlp.Encode(w, buf.Bytes())
 }
