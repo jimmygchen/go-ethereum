@@ -692,5 +692,4 @@ func TestEncodeDecodePooledTxPacket(t *testing.T) {
 	if !bytes.Equal(encoded, encoded2) {
 		t.Fatalf("%v %v", encoded, encoded2)
 	}
-	panic(common.Bytes2Hex(encoded))
 }
