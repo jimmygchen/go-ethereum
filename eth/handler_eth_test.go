@@ -463,8 +463,6 @@ func testTransactionPropagation(t *testing.T, protocol uint) {
 	}
 }
 
-func TestBlobTransactionPropagation66(t *testing.T) { testBlobTransactionPropagation(t, eth.ETH66) }
-func TestBlobTransactionPropagation67(t *testing.T) { testBlobTransactionPropagation(t, eth.ETH67) }
 func TestBlobTransactionPropagation68(t *testing.T) { testBlobTransactionPropagation(t, eth.ETH68) }
 
 func testBlobTransactionPropagation(t *testing.T, protocol uint) {

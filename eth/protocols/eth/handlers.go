@@ -542,6 +542,7 @@ func handlePooledTransactions66(backend Backend, msg Decoder, peer *Peer) error 
 	// Transactions can be processed, parse all of them and deliver to the pool
 	var txs PooledTransactionsPacket66
 	if err := msg.Decode(&txs); err != nil {
+		fmt.Println(err)
 		return fmt.Errorf("%w: message %v: %v", errDecode, msg, err)
 	}
 	for i, tx := range txs.PooledTransactionsPacket {

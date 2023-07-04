@@ -35,11 +35,20 @@ type innerType struct {
 }
 
 func (tx *BlobTxWithBlobs) DecodeRLP(s *rlp.Stream) error {
-	b, err := s.Bytes()
-	if err != nil {
+	kind, _, err := s.Kind()
+	switch {
+	case err != nil:
 		return err
+	case kind == rlp.List:
+		tx.Transaction = new(Transaction)
+		return tx.Transaction.DecodeRLP(s)
+	default:
+		b, err := s.Bytes()
+		if err != nil {
+			return err
+		}
+		return tx.UnmarshalBinary(b)
 	}
-	return tx.UnmarshalBinary(b)
 }
 
 func (tx *BlobTxWithBlobs) EncodeRLP(w io.Writer) error {
