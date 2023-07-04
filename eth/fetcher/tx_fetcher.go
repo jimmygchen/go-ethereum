@@ -297,7 +297,7 @@ func (f *TxFetcher) Enqueue(peer string, txs []*types.BlobTxWithBlobs, direct bo
 
 		wrapped := make([]*txpool.Transaction, len(batch))
 		for j, tx := range batch {
-			wrapped[j] = &txpool.Transaction{Tx: &tx.Transaction, BlobTxBlobs: tx.Blobs, BlobTxCommits: tx.Commitments, BlobTxProofs: tx.Proofs}
+			wrapped[j] = &txpool.Transaction{Tx: tx.Transaction, BlobTxBlobs: tx.Blobs, BlobTxCommits: tx.Commitments, BlobTxProofs: tx.Proofs}
 		}
 		for j, err := range f.addTxs(wrapped) {
 			// Track the transaction hash if the price is too low for us.

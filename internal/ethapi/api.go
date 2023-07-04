@@ -1880,7 +1880,7 @@ func (s *TransactionAPI) SendRawTransaction(ctx context.Context, input hexutil.B
 		if err := rlp.DecodeBytes(input, &outer); err != nil {
 			return common.Hash{}, err
 		}
-		return SubmitTransaction(ctx, s.b, &outer.Transaction, outer.Blobs, outer.Commitments, outer.Proofs)
+		return SubmitTransaction(ctx, s.b, outer.Transaction, outer.Blobs, outer.Commitments, outer.Proofs)
 	}
 	if err := tx.UnmarshalBinary(input); err != nil {
 		return common.Hash{}, err

@@ -76,7 +76,7 @@ func (h *testEthHandler) Handle(peer *eth.Peer, packet eth.Packet) error {
 	case *eth.PooledTransactionsPacket:
 		var txs []*types.Transaction
 		for _, tx := range *packet {
-			txs = append(txs, &tx.Transaction)
+			txs = append(txs, tx.Transaction)
 		}
 		h.txBroadcasts.Send(([]*types.Transaction)(txs))
 		return nil
