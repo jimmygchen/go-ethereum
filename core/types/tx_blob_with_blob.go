@@ -53,7 +53,7 @@ func (tx *BlobTxWithBlobs) DecodeRLP(s *rlp.Stream) error {
 		tx.Proofs = blobTypedTx.Proofs
 		return nil
 	}
-	return tx.Transaction.DecodeRLP(s)
+	return tx.Transaction.UnmarshalBinary(b)
 }
 
 func (tx *BlobTxWithBlobs) EncodeRLP(w io.Writer) error {
